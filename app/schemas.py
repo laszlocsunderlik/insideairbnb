@@ -2,7 +2,7 @@ from datetime import date, datetime
 from typing import Optional
 
 from shapely.geometry import MultiPolygon
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 
 class Listings(BaseModel):

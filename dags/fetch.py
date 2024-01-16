@@ -7,12 +7,12 @@ import airflow
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
-from config import settings
+from ..config import settings
 
 os.environ["no_proxy"] = "*"
 logger = logging.getLogger(__name__)
 # Airbnb API credentials
-credentials = {"username": f"{settings.api_user}", "password": f"{settings.api_password}"}
+credentials = {"username": f"{settings.API_USER}", "password": f"{settings.API_PASSWORD}"}
 
 # List of dates to export data for
 export_dates = ["2023-09-03", "2023-06-05", "2023-03-09"]
@@ -21,7 +21,7 @@ export_dates = ["2023-09-03", "2023-06-05", "2023-03-09"]
 def _get_session():
     """Build a request library Session and base url."""
     session: Session = requests.Session()
-    base_url: str = f"{settings.airbnb_schema}://{settings.airbnb_host}:{settings.airbnb_port}"
+    base_url: str = f"{settings.AIRBNB_SCHEMA}://{settings.AIRBNB_HOST}:{settings.AIRBNB_PORT}"
     return session, base_url
 
 
