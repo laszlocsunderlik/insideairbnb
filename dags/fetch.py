@@ -7,12 +7,14 @@ import airflow
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
-from ..config import settings
+from config import settings
 
 os.environ["no_proxy"] = "*"
 logger = logging.getLogger(__name__)
+
 # Airbnb API credentials
 credentials = {"username": f"{settings.API_USER}", "password": f"{settings.API_PASSWORD}"}
+print(credentials)
 
 # List of dates to export data for
 export_dates = ["2023-09-03", "2023-06-05", "2023-03-09"]

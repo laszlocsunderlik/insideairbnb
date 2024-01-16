@@ -4,7 +4,7 @@ import json
 from airflow.models import BaseOperator
 from airflow.utils.decorators import apply_defaults
 
-from hooks import AirbnbApiHook
+from custom.hooks import AirbnbApiHook
 
 
 class AirbnbFetchDataOperator(BaseOperator):

@@ -21,7 +21,7 @@ with DAG(
                 task_id=task_id,
                 conn_id="airbnbapi",
                 endpoint=endpoint,
-                start_date=export_date,
+                ecport_date=export_date,
                 out_path=f"/Users/csunderliklaszlo/Dev/sandbox/building-api/data/{endpoint}_{export_date}.json",
             )
             tasks.append(fetch_operator)
