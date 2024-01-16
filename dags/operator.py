@@ -22,7 +22,7 @@ with DAG(
                 conn_id="airbnbapi",
                 endpoint=endpoint,
                 export_date=export_date,
-                out_path=f"/Users/csunderliklaszlo/Dev/sandbox/building-api/data/{endpoint}_{export_date}.json",
+                out_path=f"/Users/csunderliklaszlo/Dev/sandbox/insideairbnb/data/{endpoint}_{export_date}.json",
             )
             tasks.append(fetch_operator)
 

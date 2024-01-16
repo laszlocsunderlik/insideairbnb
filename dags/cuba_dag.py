@@ -13,7 +13,7 @@ POSTGRES_CONN = "postgres_local"
 
 @task
 def building_reader():
-    with open("/data/csv-buildings/88d_buildings.csv", "r") as file:
+    with open("insideairbnb/data/csv-buildings/88d_buildings.csv", "r") as file:
         reader = csv.reader(file)
         next(reader)
         data = [row for row in reader]
@@ -22,7 +22,7 @@ def building_reader():
 
 @task(multiple_outputs=True)
 def landuse_reader():
-    gdf = gpd.read_file("/data/landuse/landuse.shp")
+    gdf = gpd.read_file("insideairbnb/data/landuse/landuse.shp")
     gdf_json = gdf.to_json()
     data = json.loads(gdf_json)
     return {"one": data, "two": int(gdf.crs.srs.split(":")[-1])}
@@ -30,21 +30,21 @@ def landuse_reader():
 
 @task(multiple_outputs=True)
 def adm0_reader():
-    gdf = gpd.read_file("/data/cub_adma_2019_shp/cub_admbnda_adm0_2019.shp")
+    gdf = gpd.read_file("insideairbnb/data/cub_adma_2019_shp/cub_admbnda_adm0_2019.shp")
     gdf_json = gdf.to_json()
     data = json.loads(gdf_json)
     return {"one": data, "two": int(gdf.crs.srs.split(":")[-1])}
 
 @task(multiple_outputs=True)
 def adm1_reader():
-    gdf = gpd.read_file("/data/cub_adma_2019_shp/cub_admbnda_adm1_2019.shp")
+    gdf = gpd.read_file("insideairbnb/data/cub_adma_2019_shp/cub_admbnda_adm1_2019.shp")
     gdf_json = gdf.to_json()
     data = json.loads(gdf_json)
     return {"one": data, "two": int(gdf.crs.srs.split(":")[-1])}
 
 @task(multiple_outputs=True)
 def adm2_reader():
-    gdf = gpd.read_file("/data/cub_adma_2019_shp/cub_admbnda_adm2_2019.shp")
+    gdf = gpd.read_file("insideairbnb/data/cub_adma_2019_shp/cub_admbnda_adm2_2019.shp")
     gdf_json = gdf.to_json()
     data = json.loads(gdf_json)
     return {"one": data, "two": int(gdf.crs.srs.split(":")[-1])}
