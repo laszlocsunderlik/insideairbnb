@@ -4,7 +4,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from psycopg2.extras import RealDictCursor
 
 from app.db import database
-from app.schemas import UserCreate, Token
+from app.schemas import UserCreate, Token, Coordinates, Feature, FeatureCollection, GeometryListings, Listings
 from app.utils import *
 
 app = FastAPI()
@@ -72,14 +72,24 @@ async def get_listings(query_date: str = Query(..., description="Start date to q
     if not listings:
         raise HTTPException(status_code=404, detail=f"Listings with {query_date} not found")  # Use 404 directly
 
-    listings = json_serializable(listings)
+    listings = json_serializable(listings)[offset:end]
+
+    features = []
+    for listing in listings:
+        feature = Feature(
+            geometry=GeometryListings(type="Point", coordinates=[listing["longitude"], listing["latitude"]]),
+            properties=Listings(**listing)
+        )
+        features.append(feature)
+
+    feature_collection = FeatureCollection(features=features).model_dump()
 
     response = {
         "limit": limit,
         "offset": offset,
         "end": end,
         "total": len(listings),
-        "results": listings[offset:end]
+        "results": feature_collection
     }
 
     return JSONResponse(content=response)

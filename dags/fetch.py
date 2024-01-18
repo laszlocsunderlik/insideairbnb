@@ -3,6 +3,7 @@ import os
 import json
 import requests
 from requests import Session
+import geopandas as gpd
 import airflow
 from airflow import DAG
 from airflow.operators.python import PythonOperator
@@ -104,6 +105,21 @@ with DAG(
         with open(out_path, "w") as f:
             json.dump(neighbourhoods, f)
 
+    def _rank_neighbourhoods(templates_dict: dict, **_):
+        input_path = templates_dict["input_path"]
+        output_path = templates_dict["output_path"]
+
+        logger.info(f"Reading neighbourhoods from {input_path}")
+        listings_gdf = gpd.read_file(input_path, engine="python")
+        neighbourhoods_gdf = gpd.read_file(input_path, engine="python")
+
+        logger.info(f"Ranking neighbourhoods based on number of listings")
+
+        
+
+
+        pass
+
 
     tasks = []
 
@@ -122,6 +138,8 @@ with DAG(
 
             )
             tasks.append(fetch_neighbourhoods)
+
+
 
     # Set task dependencies
     for i in range(len(tasks) - 1):
