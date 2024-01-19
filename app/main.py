@@ -1,10 +1,11 @@
 from fastapi import FastAPI
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from psycopg2.extras import RealDictCursor
-
+from geojson import Feature, FeatureCollection, Point
 from app.db import database
-from app.schemas import UserCreate, Token, Coordinates, Feature, FeatureCollection, GeometryListings, Listings
+from app.schemas import *
 from app.utils import *
 
 app = FastAPI()
@@ -59,30 +60,30 @@ async def get_listings(query_date: str = Query(..., description="Start date to q
                        pagination: dict = Depends(get_pagination_params),
                        cursor: RealDictCursor = Depends(database.connect),
                        user_id: int = Depends(get_current_user)):
+
     # Get the offset and limit values from the pagination dictionary
     offset = pagination["offset"]
     limit = pagination["limit"]
-
-    # Calculate the end index for slicing the items list
     end = offset + limit
 
     cursor.execute("SELECT * FROM listings where download_date = %s;", (query_date, ))
-    listings = cursor.fetchall()
+    listings = cursor.fetchall()[offset:end]
+    print(len(listings))
 
     if not listings:
         raise HTTPException(status_code=404, detail=f"Listings with {query_date} not found")  # Use 404 directly
 
-    listings = json_serializable(listings)[offset:end]
+    listings_jsonable = [jsonable_encoder(Listings(**listing)) for listing in listings]
 
     features = []
-    for listing in listings:
+    for listing in listings_jsonable:
         feature = Feature(
-            geometry=GeometryListings(type="Point", coordinates=[listing["longitude"], listing["latitude"]]),
-            properties=Listings(**listing)
+            geometry=Point((listing["latitude"], listing["longitude"])),
+            properties=jsonable_encoder(Listings(**listing))
         )
         features.append(feature)
 
-    feature_collection = FeatureCollection(features=features).model_dump()
+    feature_collection = FeatureCollection(features)
 
     response = {
         "limit": limit,
@@ -106,16 +107,22 @@ async def get_neighbourhoods(query_date: str = Query(..., description="Start dat
 
     # Calculate the end index for slicing the items list
     end = offset + limit
-    cursor.execute("SELECT "
-                   "id, "
-                   "neighbourhood, "
-                   "neighbourhood_group, "
-                   "CAST(download_date AS TEXT), "
-                   "'SRID=' || ST_SRID(geometry) || ';' || ST_AsText(geometry) AS wkt_with_srid "
-                   "FROM neighbourhoods "
-                   "where download_date = %s order by id;",
-                   (str(query_date), ))
-    neighbourhoods = cursor.fetchall()
+
+    cursor.execute("""
+            SELECT json_build_object(
+                'type', 'FeatureCollection',
+                'features', jsonb_agg(features.feature)
+            )
+            FROM (
+                SELECT json_build_object(
+                    'type', 'Feature',
+                    'geometry', ST_AsGeoJSON(geometry)::jsonb,
+                    'properties', to_jsonb(inputs) - 'geometry'
+            ) AS feature
+            FROM (SELECT * FROM neighbourhoods where download_date =%s) inputs) features;
+        """, (str(query_date), ))
+
+    neighbourhoods = cursor.fetchall()[offset:end]
 
     if not neighbourhoods:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
@@ -125,8 +132,7 @@ async def get_neighbourhoods(query_date: str = Query(..., description="Start dat
         "offset": offset,
         "end": end,
         "total": len(neighbourhoods),
-        "results": neighbourhoods[offset:end]
+        "results": neighbourhoods[0]["json_build_object"]
     }
-    print(len(neighbourhoods))
     return JSONResponse(content=response)
 
