@@ -3,6 +3,7 @@ import json
 
 from airflow.models import BaseOperator
 from airflow.utils.decorators import apply_defaults
+from geojson import FeatureCollection
 
 from custom.hooks import AirbnbApiHook
 
@@ -36,12 +37,16 @@ class AirbnbFetchDataOperator(BaseOperator):
             self.log.info(
                 f"Fetching data for {self.export_date}"
             )
-            data = list(
-                hook.get_data(
+            data_pages = hook.get_data(
                     endpoint=self.endpoint, start_date=self.export_date, batch_size=self.batch_size
                 )
-            )
-            self.log.info(f"Fetched {len(data)} data")
+            # Flatten the list of features from all pages
+            features = [feature for page in data_pages for feature in page.get("features", [])]
+
+            # Create a GeoJSON FeatureCollection
+            feature_collection = FeatureCollection(features)
+
+            self.log.info(f"Fetched {len(features)} data")
         finally:
             hook.close()
 
@@ -51,4 +56,4 @@ class AirbnbFetchDataOperator(BaseOperator):
         os.makedirs(output_dir, exist_ok=True)
 
         with open(self.out_path, "w") as file_:
-            json.dump(data, fp=file_)
+            json.dump(feature_collection, fp=file_)

@@ -5,6 +5,7 @@ import os
 import airflow
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from geojson import FeatureCollection
 
 from custom.hooks import AirbnbApiHook
 
@@ -20,7 +21,7 @@ with DAG(
         schedule=None,
         catchup=False
 ) as dag:
-    def _fetch_data(conn_id, templates_dict, batch_size=100, **_):
+    def fetch_data(conn_id, templates_dict, batch_size=100, **_):
         logger = logging.getLogger(__name__)
 
         endpoint = templates_dict["endpoint"]
@@ -31,20 +32,24 @@ with DAG(
         logger.info(f"Fetching data from {start_date}")
 
         hook = AirbnbApiHook(conn_id=conn_id)
-        data = list(
-            hook.get_data(
+        data_pages = hook.get_data(
                 endpoint=endpoint, start_date=start_date, batch_size=batch_size
             )
-        )
 
-        logger.info(f"Fetched {len(data)} ratings")
+        # Flatten the list of features from all pages
+        features = [feature for page in data_pages for feature in page.get("features", [])]
+
+        # Create a GeoJSON FeatureCollection
+        feature_collection = FeatureCollection(features)
+
+        logger.info(f"Fetched {len(features)} ratings")
         logger.info(f"Writing ratings to {out_path}")
 
         output_dir = os.path.dirname(out_path)
         os.makedirs(output_dir, exist_ok=True)
 
         with open(out_path, "w") as file_:
-            json.dump(data, fp=file_)
+            json.dump(feature_collection, fp=file_)
         logger.info(f"Data written to {out_path}")
         return None
 
@@ -55,7 +60,7 @@ with DAG(
             task_id = f"export_{endpoint}_{export_date}_using_custom_hook"
             fetch_operator = PythonOperator(
                 task_id=task_id,
-                python_callable=_fetch_data,
+                python_callable=fetch_data,
                 op_kwargs={"conn_id": "airbnbapi"},
                 templates_dict={
                     "endpoint": endpoint,

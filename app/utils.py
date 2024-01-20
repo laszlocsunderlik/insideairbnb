@@ -1,15 +1,10 @@
 from decimal import Decimal
 from datetime import date
-
-import geojson
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
 from fastapi import Query, Depends, status, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
-from geojson import MultiPolygon
-from shapely.wkt import loads
-from shapely.geometry import mapping
 
 from app.schemas import TokenData
 from config import settings

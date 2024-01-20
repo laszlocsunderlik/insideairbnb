@@ -3,7 +3,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from psycopg2.extras import RealDictCursor
-from geojson import Feature, FeatureCollection, Point
+from geojson import Feature, FeatureCollection
 from app.db import database
 from app.schemas import *
 from app.utils import *
@@ -32,6 +32,15 @@ async def create_user(user: UserCreate, cursor: RealDictCursor = Depends(databas
     except Exception as e:
         # Handle exceptions, log them, or customize the error response as needed
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@app.get("/users/{id}", response_model=UserOut)
+def get_user(id: int, cursor: RealDictCursor = Depends(database.connect)):
+    cursor.execute("SELECT * FROM \"user\" where id = %s;", (id,))
+    user = cursor.fetchone()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with {id} does not exists")
+    return user
 
 
 @app.post("/login/", response_model=Token)
@@ -67,8 +76,9 @@ async def get_listings(query_date: str = Query(..., description="Start date to q
     end = offset + limit
 
     cursor.execute("SELECT * FROM listings where download_date = %s;", (query_date, ))
-    listings = cursor.fetchall()[offset:end]
-    print(len(listings))
+    listings_cursor = cursor.fetchall()
+
+    listings = listings_cursor[offset:end]
 
     if not listings:
         raise HTTPException(status_code=404, detail=f"Listings with {query_date} not found")  # Use 404 directly
@@ -85,11 +95,12 @@ async def get_listings(query_date: str = Query(..., description="Start date to q
 
     feature_collection = FeatureCollection(features)
 
+    # TODO correct pagination
     response = {
         "limit": limit,
         "offset": offset,
         "end": end,
-        "total": len(listings),
+        "total": len(listings_cursor),
         "results": feature_collection
     }
 
@@ -122,16 +133,21 @@ async def get_neighbourhoods(query_date: str = Query(..., description="Start dat
             FROM (SELECT * FROM neighbourhoods where download_date =%s) inputs) features;
         """, (str(query_date), ))
 
-    neighbourhoods = cursor.fetchall()[offset:end]
+    neighbourhoods_cursor = cursor.fetchall()
+
+    neighbourhoods_len = len(neighbourhoods_cursor[0]["json_build_object"]["features"])
+    print(neighbourhoods_len)
+    neighbourhoods = neighbourhoods_cursor[offset:end]
 
     if not neighbourhoods:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"With {query_date}: neighbourhoods was not found")
+    # TODO correct pagination
     response = {
         "limit": limit,
         "offset": offset,
         "end": end,
-        "total": len(neighbourhoods),
+        "total": neighbourhoods_len,
         "results": neighbourhoods[0]["json_build_object"]
     }
     return JSONResponse(content=response)

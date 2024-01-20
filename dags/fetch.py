@@ -7,6 +7,7 @@ import geopandas as gpd
 import airflow
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from geojson import FeatureCollection
 
 from config import settings
 
@@ -44,13 +45,18 @@ def get_data(start_date: str, endpoint: str, batch_size=100):
     api_session, api_base_url = _get_session()
     token = get_token(api_session, api_base_url, credentials)
 
-    yield from get_with_pagination(
+    pages = []
+    for page in get_with_pagination(
         session=api_session,
         base_url=f"{api_base_url}/{endpoint}/",
         token=token,
         params={"query_date": start_date},
         batch_size=batch_size
-    )
+    ):
+        pages.append(page)
+
+    return pages
+
 
 
 def get_with_pagination(session: Session, base_url: str, token: str, params, batch_size=100):
@@ -72,7 +78,7 @@ def get_with_pagination(session: Session, base_url: str, token: str, params, bat
         response.raise_for_status()
         response_json = response.json()
 
-        yield from response_json["results"]
+        yield response_json["results"]
 
         offset += batch_size
         total = response_json["total"]
@@ -88,22 +94,27 @@ with DAG(
 ) as dag:
     def _fetch_data(templates_dict: dict, batch_size=100, **_):
         endpoint = templates_dict["endpoint"]
-        logger.info(f"Fetching data from Airbnb API with endpoint: {endpoint}")
         start_date = templates_dict["start_date"]
         out_path = templates_dict["out_path"]
 
+        logger.info(f"Fetching data from Airbnb API with endpoint: {endpoint}")
         logger.info(f"Fetching data from {start_date}")
-        neighbourhoods = list(
-            get_data(
-                start_date=start_date, batch_size=batch_size, endpoint=endpoint
-            )
-        )
-        logger.info(f"Fetched {len(neighbourhoods)} neighbourhoods from Airbnb API")
 
-        logger.info(f"Writing neighbourhoods to {out_path}")
+        data_pages = get_data(start_date=start_date, batch_size=batch_size, endpoint=endpoint)
+
+        # Flatten the list of features from all pages
+        features = [feature for page in data_pages for feature in page.get("features", [])]
+
+        # Create a GeoJSON FeatureCollection
+        feature_collection = FeatureCollection(features)
+
+        logger.info(f"Fetched {len(features)} features from Airbnb API")
+
+        logger.info(f"Writing data to {out_path}")
 
         with open(out_path, "w") as f:
-            json.dump(neighbourhoods, f)
+            json.dump(feature_collection, f, indent=4)
+
 
     def _rank_neighbourhoods(templates_dict: dict, **_):
         input_path = templates_dict["input_path"]
@@ -114,10 +125,6 @@ with DAG(
         neighbourhoods_gdf = gpd.read_file(input_path, engine="python")
 
         logger.info(f"Ranking neighbourhoods based on number of listings")
-
-        
-
-
         pass
 
 

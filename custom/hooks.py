@@ -66,14 +66,16 @@ class AirbnbApiHook(BaseHook):
         :param endpoint: endpoint to fetch data from (neighbourhoods or listings)
         :param start_date: starting date to fetch records from
         :param batch_size: page size
-        :return:
+        :return: list of pages until all pages are fetched
         """
-
-        yield from self.get_with_pagination(
+        pages = []
+        for page in self.get_with_pagination(
             endpoint=endpoint,
             params={"query_date": start_date},
             batch_size=batch_size
-        )
+        ):
+            pages.append(page)
+        return pages
 
     def get_with_pagination(self, endpoint, params, batch_size=100):
         """
@@ -98,7 +100,7 @@ class AirbnbApiHook(BaseHook):
             response.raise_for_status()
             response_json = response.json()
 
-            yield from response_json["results"]
+            yield response_json["results"]
 
             offset += batch_size
             total = response_json["total"]
