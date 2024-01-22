@@ -23,8 +23,8 @@ class Listings(BaseModel):
     host_name: str
     neighbourhood_group: Optional[str] = None
     neighbourhood: str
-    latitude: float
     longitude: float
+    latitude: float
     room_type: str
     price: int
     minimum_nights: int

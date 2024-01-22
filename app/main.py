@@ -88,7 +88,7 @@ async def get_listings(query_date: str = Query(..., description="Start date to q
     features = []
     for listing in listings_jsonable:
         feature = Feature(
-            geometry=Point((listing["latitude"], listing["longitude"])),
+            geometry=Point((listing["longitude"], listing["latitude"])),
             properties=jsonable_encoder(Listings(**listing))
         )
         features.append(feature)

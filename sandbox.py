@@ -31,6 +31,7 @@ import os
 import json
 import requests
 from requests import Session
+from geojson import FeatureCollection
 import geopandas as gpd
 import airflow
 from airflow import DAG
@@ -40,10 +41,6 @@ from config import settings
 
 os.environ["no_proxy"] = "*"
 logger = logging.getLogger(__name__)
-
-# Airbnb API credentials
-credentials = {"username": f"{settings.API_USER}", "password": f"{settings.API_PASSWORD}"}
-print(credentials)
 
 # List of dates to export data for
 export_dates = ["2023-09-03", "2023-06-05", "2023-03-09"]
@@ -71,14 +68,17 @@ def get_token(session: Session, base_url: str, credentials: dict):
 def get_data(start_date: str, endpoint: str, batch_size=100):
     api_session, api_base_url = _get_session()
     token = get_token(api_session, api_base_url, credentials)
+    data_list = []
 
-    return list(get_with_pagination(
+    for data in get_with_pagination(
         session=api_session,
         base_url=f"{api_base_url}/{endpoint}/",
         token=token,
         params={"query_date": start_date},
         batch_size=batch_size
-    ))
+    ):
+        data_list.append(data)
+    return data_list
 
 
 def get_with_pagination(session: Session, base_url: str, token: str, params, batch_size=100):
@@ -100,31 +100,41 @@ def get_with_pagination(session: Session, base_url: str, token: str, params, bat
         response.raise_for_status()
         response_json = response.json()
 
-        yield from response_json["results"]
+        yield response_json["results"]
 
         offset += batch_size
         total = response_json["total"]
 
 
-#
+
 # for export_date in export_dates:
 #     for endpoint in ["neighbourhoods", "listings"]:
 #         task_id = f"export_{endpoint}_{export_date}"
 #
-#         data = get_data(
+#         data_pages = get_data(
 #                 start_date=export_date, batch_size=100, endpoint=endpoint
 #             )
-#         data_list = list(data)
 #
-#     print("OK")
-#     print(data)
+#         for page in data_pages:
+#             for feature in page.get("features"):
+#                 print(feature)
+#
+#
+#         # Create a GeoJSON FeatureCollection
+#         feature_collection = FeatureCollection(features)
+#
+#         logger.info(f"Fetched {len(features)} features from Airbnb API")
 
 
 
 
-geojson_data = open("data/listings_2023-09-03.json")
 
-data = json.load(geojson_data)
+import geopandas as gpd
 
-print(data)
+file1 = gpd.read_file("data/listings_2023-09-03.json", driver="GeoJSON", crs="EPSG:4326", encoding="utf-8", index=True)
+file2 = gpd.read_file("data/neighbourhoods_2023-09-03.json", driver="GeoJSON", crs="EPSG:4326", encoding="utf-8", index=True)
+
+sj = file2.sjoin(file1, how="inner", predicate="intersects")
+sj_count = sj.groupby("neighbourhood_left")["id_right"].nunique()
+print(sj_count.nlargest(n=5, keep="all"))
 
