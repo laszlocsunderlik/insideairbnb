@@ -38,7 +38,10 @@ class AirbnbApiHook(BaseHook):
 
             self.session = requests.Session()
             self.base_url = f"{schema}://{host}:{port}"
-            self.credentials = {"username": f"{config.login}", "password": f"{config.password}"}
+            self.credentials = {
+                "username": f"{config.login}",
+                "password": f"{config.password}",
+            }
 
         return self.session, self.base_url, self.credentials
 
@@ -52,8 +55,7 @@ class AirbnbApiHook(BaseHook):
     def connect_to_api(self):
         """Authenticate to the Airbnb listings API and fetch the token."""
         login_response = self.session.post(
-            f"{self.base_url}/login/",
-            data=self.credentials
+            f"{self.base_url}/login/", data=self.credentials
         )
         login_response.raise_for_status()
         if login_response.status_code == 200:
@@ -70,9 +72,7 @@ class AirbnbApiHook(BaseHook):
         """
         pages = []
         for page in self.get_with_pagination(
-            endpoint=endpoint,
-            params={"query_date": start_date},
-            batch_size=batch_size
+            endpoint=endpoint, params={"query_date": start_date}, batch_size=batch_size
         ):
             pages.append(page)
         return pages
@@ -92,10 +92,7 @@ class AirbnbApiHook(BaseHook):
             response = session.get(
                 api_base_url + "/" + endpoint,
                 headers={"Authorization": f"Bearer {token}"},
-                params={
-                    **params,
-                    **{"offset": offset, "limit": batch_size}
-                }
+                params={**params, **{"offset": offset, "limit": batch_size}},
             )
             response.raise_for_status()
             response_json = response.json()
@@ -104,4 +101,3 @@ class AirbnbApiHook(BaseHook):
 
             offset += batch_size
             total = response_json["total"]
-

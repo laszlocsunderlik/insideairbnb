@@ -157,10 +157,10 @@ with DAG(
             task_id=task_id_count,
             python_callable=_rank_neighbourhoods,
             templates_dict={
-                "input_path_listings": f"/Users/csunderliklaszlo/Dev/sandbox/insideairbnb/data/listings_{export_date}.json",
-                "input_path_neighbourhoods": f"/Users/csunderliklaszlo/Dev/sandbox/insideairbnb/data/neighbourhoods_{export_date}.json",
+                "input_path_listings": f"{settings.DATA_PATH}/listings_{export_date}.json",
+                "input_path_neighbourhoods": f"{settings.DATA_PATH}/neighbourhoods_{export_date}.json",
                 "export_date": export_date,
-                "output_path": f"/Users/csunderliklaszlo/Dev/sandbox/insideairbnb/data/rankings.csv",
+                "output_path": f"{settings.DATA_PATH}/rankings.csv",
                 "geopandas_kwargs": {"driver": "GeoJSON", "crs": "EPSG:4326", "encoding": "utf-8", "index": True}
             },
         )
@@ -174,7 +174,7 @@ with DAG(
                 templates_dict={
                     "endpoint": endpoint,
                     "export_date": export_date,
-                    "out_path": f"/Users/csunderliklaszlo/Dev/sandbox/insideairbnb/data/{endpoint}_{export_date}.json"
+                    "out_path": f"{settings.DATA_PATH}/{endpoint}_{export_date}.json"
                 },
             )
             fetch_data_tasks.append(fetch_neighbourhoods)

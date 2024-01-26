@@ -14,15 +14,16 @@ class AirbnbFetchDataOperator(BaseOperator):
     """
     Operator that fetches data from the Airbnb API.
     """
+
     @apply_defaults
     def __init__(
-            self,
-            conn_id,
-            out_path,
-            export_date,
-            batch_size=100,
-            endpoint="listings",
-            **kwargs,
+        self,
+        conn_id,
+        out_path,
+        export_date,
+        batch_size=100,
+        endpoint="listings",
+        **kwargs,
     ):
         super(AirbnbFetchDataOperator, self).__init__(**kwargs)
 
@@ -36,14 +37,16 @@ class AirbnbFetchDataOperator(BaseOperator):
         hook = AirbnbApiHook(self._conn_id)
 
         try:
-            self.log.info(
-                f"Fetching data for {self.export_date}"
-            )
+            self.log.info(f"Fetching data for {self.export_date}")
             data_pages = hook.get_data(
-                    endpoint=self.endpoint, start_date=self.export_date, batch_size=self.batch_size
-                )
+                endpoint=self.endpoint,
+                start_date=self.export_date,
+                batch_size=self.batch_size,
+            )
             # Flatten the list of features from all pages
-            features = [feature for page in data_pages for feature in page.get("features", [])]
+            features = [
+                feature for page in data_pages for feature in page.get("features", [])
+            ]
 
             # Create a GeoJSON FeatureCollection
             feature_collection = FeatureCollection(features)
@@ -68,13 +71,13 @@ class AirbnbRankNeighbourhoodsOperator(BaseOperator):
 
     @apply_defaults
     def __init__(
-            self,
-            input_path_listings,
-            input_path_neighbourhoods,
-            export_date,
-            output_path,
-            geopandas_kwargs,
-            **kwargs,
+        self,
+        input_path_listings,
+        input_path_neighbourhoods,
+        export_date,
+        output_path,
+        geopandas_kwargs,
+        **kwargs,
     ):
         super(AirbnbRankNeighbourhoodsOperator, self).__init__(**kwargs)
         self.input_path_listings = input_path_listings
@@ -91,7 +94,9 @@ class AirbnbRankNeighbourhoodsOperator(BaseOperator):
         self.log.info(f"Reading listings from {self.input_path_listings}")
 
         listings_gdf = gpd.read_file(self.input_path_listings, **self.geopandas_kwargs)
-        neighbourhoods_gdf = gpd.read_file(self.input_path_neighbourhoods, **self.geopandas_kwargs)
+        neighbourhoods_gdf = gpd.read_file(
+            self.input_path_neighbourhoods, **self.geopandas_kwargs
+        )
 
         self.log.info(f"Ranking neighbourhoods based on number of listings")
 
@@ -104,7 +109,6 @@ class AirbnbRankNeighbourhoodsOperator(BaseOperator):
 
         try:
             pd.read_csv(self.output_path)
-            sj_count.to_csv(self.output_path, mode='a', header=False, index=False)
+            sj_count.to_csv(self.output_path, mode="a", header=False, index=False)
         except FileNotFoundError:
-            sj_count.to_csv(self.output_path, mode='w', header=True, index=False)
-
+            sj_count.to_csv(self.output_path, mode="w", header=True, index=False)

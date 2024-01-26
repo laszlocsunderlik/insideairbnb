@@ -24,7 +24,9 @@ class AirbnbApiSensor(BaseSensorOperator):
         hook = AirbnbApiHook(self.conn_id)
         try:
             # Attempt to fetch data for the specified endpoint and export date
-            data = hook.get_data(endpoint=endpoint, start_date=self.export_date, batch_size=100)
+            data = hook.get_data(
+                endpoint=endpoint, start_date=self.export_date, batch_size=100
+            )
 
             # Check if any data was retrieved
             self.log.info(
@@ -34,7 +36,9 @@ class AirbnbApiSensor(BaseSensorOperator):
                 return True
         except StopIteration as e:
             # Handle exceptions as needed (e.g., log the error)
-            self.log.exception(f"Error checking data existence for endpoint {endpoint}: {str(e)}")
+            self.log.exception(
+                f"Error checking data existence for endpoint {endpoint}: {str(e)}"
+            )
             return False
 
 
@@ -48,4 +52,3 @@ class JsonDataSensor(BaseSensorOperator):
         # Check if the file exists
         self.log.info(f"Checking if file exists: {self.filepath}...")
         return os.path.exists(self.filepath)
-

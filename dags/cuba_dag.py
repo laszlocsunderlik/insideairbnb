@@ -35,12 +35,14 @@ def adm0_reader():
     data = json.loads(gdf_json)
     return {"one": data, "two": int(gdf.crs.srs.split(":")[-1])}
 
+
 @task(multiple_outputs=True)
 def adm1_reader():
     gdf = gpd.read_file("insideairbnb/data/cub_adma_2019_shp/cub_admbnda_adm1_2019.shp")
     gdf_json = gdf.to_json()
     data = json.loads(gdf_json)
     return {"one": data, "two": int(gdf.crs.srs.split(":")[-1])}
+
 
 @task(multiple_outputs=True)
 def adm2_reader():
@@ -66,13 +68,10 @@ def insert_adm0(json_data, crs, postgres_conn_id):
         adm0_es = row["properties"].get("ADM0_ES", None)
         geometry = json.dumps(row["geometry"])
         print(geometry)
-        cur.execute(insert_query,
-                    (str(adm0_pcode),
-                     str(adm0_es),
-                     geometry,
-                     crs))
+        cur.execute(insert_query, (str(adm0_pcode), str(adm0_es), geometry, crs))
 
     connection.commit()
+
 
 @task
 def insert_adm1(json_data, crs, postgres_conn_id):
@@ -90,14 +89,12 @@ def insert_adm1(json_data, crs, postgres_conn_id):
         adm1_es = row["properties"].get("ADM1_ES", None)
         adm1_ref = row["properties"].get("ADM1_REF", None)
         geometry = json.dumps(row["geometry"])
-        cur.execute(insert_query,
-                    (str(adm1_pcode),
-                     str(adm1_es),
-                     str(adm1_ref),
-                     geometry,
-                     crs))
+        cur.execute(
+            insert_query, (str(adm1_pcode), str(adm1_es), str(adm1_ref), geometry, crs)
+        )
 
     connection.commit()
+
 
 @task
 def insert_adm2(json_data, crs, postgres_conn_id):
@@ -115,12 +112,9 @@ def insert_adm2(json_data, crs, postgres_conn_id):
         adm2_es = row["properties"].get("ADM2_ES", None)
         adm2_ref = row["properties"].get("ADM2_REF", None)
         geometry = json.dumps(row["geometry"])
-        cur.execute(insert_query,
-                    (str(adm2_pcode),
-                     str(adm2_es),
-                     str(adm2_ref),
-                     geometry,
-                     crs))
+        cur.execute(
+            insert_query, (str(adm2_pcode), str(adm2_es), str(adm2_ref), geometry, crs)
+        )
 
     connection.commit()
 
@@ -142,12 +136,9 @@ def insert_landuse(json_data, crs, postgres_conn_id):
         landuse_type = row["properties"].get("type", None)
         geometry = json.dumps(row["geometry"])
         print(geometry)
-        cur.execute(insert_query,
-                    (int(osm_id),
-                     str(name),
-                     str(landuse_type),
-                     geometry,
-                     crs))
+        cur.execute(
+            insert_query, (int(osm_id), str(name), str(landuse_type), geometry, crs)
+        )
 
     connection.commit()
 
@@ -162,26 +153,36 @@ def insert_buildings(data, postgres_conn_id):
         values (%s, %s, %s, %s, ST_GeomFromText(%s, 4326), %s)
     """
     for row in data:
-        latitude, longitude, area_in_meters, confidence, wkt_geometry, full_plus_code = row
+        (
+            latitude,
+            longitude,
+            area_in_meters,
+            confidence,
+            wkt_geometry,
+            full_plus_code,
+        ) = row
 
-        cur.execute(insert_query,
-                    (float(latitude),
-                     float(longitude),
-                     float(area_in_meters),
-                     float(confidence),
-                     wkt_geometry,
-                     str(full_plus_code)
-                     ))
+        cur.execute(
+            insert_query,
+            (
+                float(latitude),
+                float(longitude),
+                float(area_in_meters),
+                float(confidence),
+                wkt_geometry,
+                str(full_plus_code),
+            ),
+        )
     connection.commit()
 
 
 with DAG(
-        dag_id="inserting_GIS_data_into_PostGIS",
-        description="Inserting_GIS_data_into_PostGIS.",
-        start_date=airflow.utils.dates.days_ago(1),
-        schedule="@hourly",
-        catchup=False,
-        default_args={'provide_context': True}
+    dag_id="inserting_GIS_data_into_PostGIS",
+    description="Inserting_GIS_data_into_PostGIS.",
+    start_date=airflow.utils.dates.days_ago(1),
+    schedule="@hourly",
+    catchup=False,
+    default_args={"provide_context": True},
 ) as dag:
     start = EmptyOperator(task_id="start")
 
@@ -190,35 +191,35 @@ with DAG(
         postgres_conn_id=POSTGRES_CONN,
         sql="""
             drop table if exists cuba_adm0 cascade;
-            """
+            """,
     )
     drop_cuba_adm1 = PostgresOperator(
         task_id="drop_cuba_adm1",
         postgres_conn_id=POSTGRES_CONN,
         sql="""
             drop table if exists cuba_adm1 cascade;
-            """
+            """,
     )
     drop_cuba_adm2 = PostgresOperator(
         task_id="drop_cuba_adm2",
         postgres_conn_id=POSTGRES_CONN,
         sql="""
             drop table if exists cuba_adm2 cascade;
-            """
+            """,
     )
     drop_cuba_landuse = PostgresOperator(
         task_id="drop_cuba_landuse",
         postgres_conn_id=POSTGRES_CONN,
         sql="""
         drop table if exists cuba_landuse cascade;
-        """
+        """,
     )
     drop_buildings = PostgresOperator(
         task_id="drop_buildings",
         postgres_conn_id=POSTGRES_CONN,
         sql="""
                 drop table if exists buildings cascade;
-                """
+                """,
     )
     create_cuba_adm0 = PostgresOperator(
         task_id="create_cuba_adm0",
@@ -230,14 +231,14 @@ with DAG(
             adm0_es varchar(4),
             geometry geometry not null
             )
-            """
+            """,
     )
     gist_cuba_adm0 = PostgresOperator(
         task_id="gist_cuba_adm0",
         postgres_conn_id=POSTGRES_CONN,
         sql="""
             CREATE INDEX gist_cuba_adm0 ON cuba_adm0 USING GIST (geometry);
-            """
+            """,
     )
     create_cuba_adm1 = PostgresOperator(
         task_id="create_cuba_adm1",
@@ -250,14 +251,14 @@ with DAG(
                 adm1_ref varchar,
                 geometry geometry not null
                 )
-                """
+                """,
     )
     gist_cuba_adm1 = PostgresOperator(
         task_id="gist_cuba_adm1",
         postgres_conn_id=POSTGRES_CONN,
         sql="""
                 CREATE INDEX gist_cuba_adm1 ON cuba_adm1 USING GIST (geometry);
-                """
+                """,
     )
     create_cuba_adm2 = PostgresOperator(
         task_id="create_cuba_adm2",
@@ -270,14 +271,14 @@ with DAG(
             adm2_ref varchar,
             geometry geometry not null
             )
-            """
+            """,
     )
     gist_cuba_adm2 = PostgresOperator(
         task_id="gist_cuba_adm2",
         postgres_conn_id=POSTGRES_CONN,
         sql="""
             CREATE INDEX gist_cuba_adm2 ON cuba_adm2 USING GIST (geometry);
-            """
+            """,
     )
     create_cuba_landuse = PostgresOperator(
         task_id="create_cuba_landuse",
@@ -290,14 +291,14 @@ with DAG(
             landuse_type varchar,
             geometry geometry not null
             )
-            """
+            """,
     )
     gist_cuba_landuse = PostgresOperator(
         task_id="gist_cuba_landuse",
         postgres_conn_id=POSTGRES_CONN,
         sql="""
         CREATE INDEX gist_cuba_landuse ON cuba_landuse USING GIST (geometry);
-        """
+        """,
     )
     create_buildings = PostgresOperator(
         task_id="create_buildings",
@@ -312,14 +313,14 @@ with DAG(
             geometry geometry not null,
             full_plus_code varchar
             )
-            """
+            """,
     )
     gist_buildings = PostgresOperator(
         task_id="gist_buildings",
         postgres_conn_id=POSTGRES_CONN,
         sql="""
                 CREATE INDEX gist_buildings ON buildings USING GIST (geometry);
-                """
+                """,
     )
     spatial_join = PostgresOperator(
         task_id="spatial_join",
@@ -357,7 +358,7 @@ with DAG(
                 ST_Contains(lu.geometry, buildings.geometry)
             LIMIT 1
         ) AS landuse ON true;
-        """
+        """,
     )
     analysis = PostgresOperator(
         task_id="analysis",
@@ -369,7 +370,7 @@ with DAG(
             view_building_sj
         WHERE
             building_id = '254412';
-        """
+        """,
     )
     analysis2 = PostgresOperator(
         task_id="analysis2",
@@ -378,29 +379,63 @@ with DAG(
         select count(*) from view_building_sj
         where adm2_pcode = 'CU0913'
         ;
-        """
+        """,
     )
 
     adm0 = adm0_reader()
-    insert_adm0_task = insert_adm0(adm0["one"], adm0["two"], postgres_conn_id=POSTGRES_CONN)
+    insert_adm0_task = insert_adm0(
+        adm0["one"], adm0["two"], postgres_conn_id=POSTGRES_CONN
+    )
 
     adm1 = adm1_reader()
-    insert_adm1_task = insert_adm1(adm1["one"], adm1["two"], postgres_conn_id=POSTGRES_CONN)
+    insert_adm1_task = insert_adm1(
+        adm1["one"], adm1["two"], postgres_conn_id=POSTGRES_CONN
+    )
 
     adm2 = adm2_reader()
-    insert_adm2_task = insert_adm2(adm2["one"], adm2["two"], postgres_conn_id=POSTGRES_CONN)
+    insert_adm2_task = insert_adm2(
+        adm2["one"], adm2["two"], postgres_conn_id=POSTGRES_CONN
+    )
 
     landuse = landuse_reader()
-    insert_landuse_taks = insert_landuse(landuse["one"], landuse["two"], postgres_conn_id=POSTGRES_CONN)
+    insert_landuse_taks = insert_landuse(
+        landuse["one"], landuse["two"], postgres_conn_id=POSTGRES_CONN
+    )
 
     building_data = building_reader()
-    insert_buildings_task = insert_buildings(building_data, postgres_conn_id=POSTGRES_CONN)
+    insert_buildings_task = insert_buildings(
+        building_data, postgres_conn_id=POSTGRES_CONN
+    )
 
-    start >> [drop_cuba_adm0, drop_cuba_adm1, drop_cuba_adm2, drop_cuba_landuse, drop_buildings]
+    start >> [
+        drop_cuba_adm0,
+        drop_cuba_adm1,
+        drop_cuba_adm2,
+        drop_cuba_landuse,
+        drop_buildings,
+    ]
     drop_cuba_adm0 >> create_cuba_adm0 >> gist_cuba_adm0 >> adm0 >> insert_adm0_task
     drop_cuba_adm1 >> create_cuba_adm1 >> gist_cuba_adm1 >> adm1 >> insert_adm1_task
     drop_cuba_adm2 >> create_cuba_adm2 >> gist_cuba_adm2 >> adm2 >> insert_adm2_task
-    drop_cuba_landuse >> create_cuba_landuse >> gist_cuba_landuse >> landuse >> insert_landuse_taks
-    drop_buildings >> create_buildings >> gist_buildings >> building_data >> insert_buildings_task
-    [insert_adm0_task, insert_adm1_task, insert_adm2_task, insert_landuse_taks, insert_buildings_task] >> spatial_join
+    (
+        drop_cuba_landuse
+        >> create_cuba_landuse
+        >> gist_cuba_landuse
+        >> landuse
+        >> insert_landuse_taks
+    )
+    (
+        drop_buildings
+        >> create_buildings
+        >> gist_buildings
+        >> building_data
+        >> insert_buildings_task
+    )
+    [
+        insert_adm0_task,
+        insert_adm1_task,
+        insert_adm2_task,
+        insert_landuse_taks,
+        insert_buildings_task,
+    ] >> spatial_join
     spatial_join >> analysis >> analysis2

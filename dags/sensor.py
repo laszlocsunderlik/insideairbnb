@@ -3,6 +3,7 @@ from airflow.utils.dates import days_ago
 
 from custom.operators import AirbnbFetchDataOperator, AirbnbRankNeighbourhoodsOperator
 from custom.sensors import AirbnbApiSensor, JsonDataSensor
+from config import settings
 
 # List of dates to export data for
 export_dates = ["2023-09-03", "2023-06-05", "2023-03-09"]
@@ -23,10 +24,10 @@ with DAG(
         task_id_count = f"rankin_neighbourhoods_{export_date}"
         count_operator = AirbnbRankNeighbourhoodsOperator(
             task_id=task_id_count,
-            input_path_listings=f"/Users/csunderliklaszlo/Dev/sandbox/insideairbnb/data/listings_{export_date}.json",
-            input_path_neighbourhoods=f"/Users/csunderliklaszlo/Dev/sandbox/insideairbnb/data/neighbourhoods_{export_date}.json",
+            input_path_listings=f"{settings.DATA_PATH}/listings_{export_date}.json",
+            input_path_neighbourhoods=f"{settings.DATA_PATH}/neighbourhoods_{export_date}.json",
             export_date=export_date,
-            output_path=f"/Users/csunderliklaszlo/Dev/sandbox/insideairbnb/data/rankings.csv",
+            output_path=f"{settings.DATA_PATH}/rankings.csv",
             geopandas_kwargs={"driver": "GeoJSON", "crs": "EPSG:4326", "encoding": "utf-8", "index": True},
         )
         rank_data_tasks.append(count_operator)
@@ -48,13 +49,13 @@ with DAG(
                 conn_id="airbnbapi",
                 endpoint=endpoint,
                 export_date=export_date,
-                out_path=f"/Users/csunderliklaszlo/Dev/sandbox/insideairbnb/data/{endpoint}_{export_date}.json",
+                out_path=f"{settings.DATA_PATH}/{endpoint}_{export_date}.json",
             )
             fetch_data_tasks.append(fetch_operator)
 
             json_sensor = JsonDataSensor(
                 task_id=f"wait_for_json_data_{endpoint}_{export_date}",
-                filepath=f"/Users/csunderliklaszlo/Dev/sandbox/insideairbnb/data/{endpoint}_{export_date}.json",
+                filepath=f"{settings.DATA_PATH}/{endpoint}_{export_date}.json",
                 poke_interval=30,
                 timeout=60,
             )

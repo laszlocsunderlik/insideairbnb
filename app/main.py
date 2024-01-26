@@ -16,7 +16,7 @@ async def root():
     return {"Message": "Hi insideairbnb app"}
 
 
-@app.post("/create_user/", status_code=status.HTTP_201_CREATED)
+@app.post("/create_user/", status_code=status.HTTP_201_CREATED, response_model=UserOut)
 async def create_user(user: UserCreate, cursor: RealDictCursor = Depends(database.connect)):
     try:
         hashed_password = hash_password(user.password)
